@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReplyMate — AI Email Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#FAFAF8;color:#1a1a18;min-height:100vh}
+nav{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 2rem;border-bottom:1px solid #e8e6de;background:#FAFAF8}
+.logo{display:flex;align-items:center;gap:8px;font-weight:500;font-size:16px}
+.logo-dot{width:10px;height:10px;border-radius:50%;background:#0F6E56}
+.nav-cta{padding:8px 18px;background:#0F6E56;color:#E1F5EE;border:none;border-radius:8px;font-size:14px;font-family:inherit;cursor:pointer;text-decoration:none}
+.hero{max-width:680px;margin:0 auto;padding:5rem 2rem 3rem;text-align:center}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:#E1F5EE;color:#0F6E56;border-radius:999px;font-size:12px;font-weight:500;margin-bottom:1.5rem}
+h1{font-family:'DM Serif Display',serif;font-size:52px;line-height:1.1;color:#0d1a10;margin-bottom:1.25rem;font-weight:400}
+h1 em{font-style:italic;color:#0F6E56}
+.hero p{font-size:18px;color:#555;line-height:1.7;margin-bottom:2.5rem;max-width:480px;margin-left:auto;margin-right:auto}
+.hero-cta{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;background:#0F6E56;color:#E1F5EE;border:none;border-radius:10px;font-size:16px;font-family:inherit;cursor:pointer;text-decoration:none;font-weight:500}
+.hero-cta:hover{background:#085041}
+.hero-sub{font-size:13px;color:#999;margin-top:14px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#e8e6de;border:1px solid #e8e6de;border-radius:12px;overflow:hidden;max-width:480px;margin:3rem auto 0}
+.metric{background:#FAFAF8;padding:1.5rem;text-align:center}
+.metric-num{font-size:28px;font-weight:500;color:#0d1a10}
+.metric-label{font-size:12px;color:#888;margin-top:3px}
+section{max-width:760px;margin:0 auto;padding:4rem 2rem;border-top:1px solid #e8e6de}
+section h2{font-family:'DM Serif Display',serif;font-size:34px;font-weight:400;color:#0d1a10;margin-bottom:0.75rem}
+section p{font-size:16px;color:#555;line-height:1.7;max-width:520px}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:#e8e6de;border:1px solid #e8e6de;border-radius:12px;overflow:hidden;margin-top:2rem}
+.feature{background:#FAFAF8;padding:1.5rem}
+.feature-icon{font-size:20px;margin-bottom:12px}
+.feature h3{font-size:15px;font-weight:500;margin-bottom:6px}
+.feature p{font-size:13px;color:#666;line-height:1.6;max-width:none}
+.steps{display:flex;flex-direction:column;gap:0;margin-top:2rem}
+.step{display:flex;gap:16px;padding:1.25rem 0;border-bottom:1px solid #e8e6de}
+.step:last-child{border-bottom:none}
+.step-num{width:32px;height:32px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#0F6E56;flex-shrink:0;margin-top:3px}
+.step h3{font-size:15px;font-weight:500;margin-bottom:4px}
+.step p{font-size:14px;color:#666;line-height:1.6}
+.pricing{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:2rem}
+.plan{background:#fff;border:1px solid #e8e6de;border-radius:12px;padding:1.5rem}
+.plan.featured{border-color:#0F6E56;border-width:2px}
+.plan-name{font-size:13px;color:#888;margin-bottom:6px}
+.plan-price{font-size:32px;font-weight:500;color:#0d1a10}
+.plan-period{font-size:13px;color:#999;margin-bottom:1rem}
+.plan-features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem}
+.plan-features li{font-size:13px;color:#555;display:flex;align-items:center;gap:8px}
+.plan-features li::before{content:'✓';color:#0F6E56;font-weight:500;flex-shrink:0}
+.plan-btn{width:100%;padding:10px;border-radius:8px;font-size:14px;font-family:inherit;cursor:pointer;border:1px solid #ddd;background:transparent;color:#333}
+.plan-btn.primary{background:#0F6E56;color:#E1F5EE;border:none}
+.plan-btn:hover{opacity:0.85}
+.popular-badge{display:inline-block;padding:3px 10px;background:#E1F5EE;color:#0F6E56;border-radius:999px;font-size:11px;font-weight:500;margin-bottom:10px}
+.cta-section{text-align:center;padding:5rem 2rem;border-top:1px solid #e8e6de;max-width:760px;margin:0 auto}
+.cta-section h2{font-family:'DM Serif Display',serif;font-size:38px;font-weight:400;margin-bottom:0.75rem}
+.cta-section p{font-size:16px;color:#666;margin-bottom:2rem}
+footer{text-align:center;padding:2rem;border-top:1px solid #e8e6de;font-size:13px;color:#aaa}
+@media(max-width:600px){h1{font-size:36px}.metrics{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo"><div class="logo-dot"></div> ReplyMate</div>
+  <a href="/auth/google" class="nav-cta">Get started free</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">✦ Powered by Claude AI</div>
+  <h1>Your inbox,<br><em>handled for you</em></h1>
+  <p>ReplyMate connects to your Gmail and replies to emails on your behalf — in your voice, automatically.</p>
+  <a href="/auth/google" class="hero-cta">Connect your Gmail — it's free</a>
+  <div class="hero-sub">No credit card required &nbsp;·&nbsp; Takes 60 seconds to set up</div>
+  <div class="metrics">
+    <div class="metric"><div class="metric-num">2.5h</div><div class="metric-label">saved per day</div></div>
+    <div class="metric"><div class="metric-num">&lt;30s</div><div class="metric-label">to reply</div></div>
+    <div class="metric"><div class="metric-num">0</div><div class="metric-label">missed emails</div></div>
+  </div>
+</div>
+
+<section>
+  <h2>Everything you need</h2>
+  <p>Built for professionals who can't afford to miss a message.</p>
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">🤖</div>
+      <h3>AI-powered replies</h3>
+      <p>Claude reads each email and writes a reply that sounds exactly like you.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📬</div>
+      <h3>Gmail integration</h3>
+      <p>Sign in with Google — no setup headaches, no forwarding, no new apps.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🎛️</div>
+      <h3>Custom tone</h3>
+      <p>Tell the agent your style, availability, and what to say or avoid.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">✅</div>
+      <h3>Approve or auto-send</h3>
+      <p>Review before sending, or flip on autopilot for full automation.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Up and running in minutes</h2>
+  <p>No technical skills needed.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div><h3>Sign in with Google</h3><p>Connect your Gmail account with one click. We only request the permissions we need.</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div><h3>Set your preferences</h3><p>Tell ReplyMate your name, reply tone, and any instructions for how to handle emails.</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div><h3>Let it run</h3><p>Check your inbox, generate AI replies, approve or auto-send. Your inbox is handled.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Simple pricing</h2>
+  <p>No hidden fees. Cancel any time.</p>
+  <div class="pricing">
+    <div class="plan">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price">$49</div>
+      <div class="plan-period">one-time</div>
+      <ul class="plan-features">
+        <li>Gmail setup & connection</li>
+        <li>AI reply generation</li>
+        <li>Approve-before-send mode</li>
+        <li>1 week support</li>
+      </ul>
+      <a href="/auth/google"><button class="plan-btn">Get started</button></a>
+    </div>
+    <div class="plan featured">
+      <div class="popular-badge">Most popular</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">$99</div>
+      <div class="plan-period">per month</div>
+      <ul class="plan-features">
+        <li>Everything in Starter</li>
+        <li>Auto-send mode</li>
+        <li>Unlimited emails</li>
+        <li>Monthly tune-ups</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="/auth/google"><button class="plan-btn primary">Get Pro</button></a>
+    </div>
+    <div class="plan">
+      <div class="plan-name">Business</div>
+      <div class="plan-price">$299</div>
+      <div class="plan-period">one-time</div>
+      <ul class="plan-features">
+        <li>Full custom setup</li>
+        <li>Team inbox support</li>
+        <li>Custom branding</li>
+        <li>30-day support</li>
+      </ul>
+      <a href="/auth/google"><button class="plan-btn">Get Business</button></a>
+    </div>
+  </div>
+</section>
+
+<div class="cta-section">
+  <h2>Ready to reclaim your time?</h2>
+  <p>Join professionals who let AI handle their inbox.</p>
+  <a href="/auth/google" class="hero-cta">Connect Gmail — free to start</a>
+</div>
+
+<footer>© 2026 ReplyMate &nbsp;·&nbsp; Built with Claude AI</footer>
+
+</body>
+</html>

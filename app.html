@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReplyMate — Inbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#F7F6F2;color:#1a1a18;min-height:100vh}
+nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;background:#fff;border-bottom:1px solid #e8e6de}
+.logo{display:flex;align-items:center;gap:8px;font-weight:500;font-size:15px}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:#0F6E56}
+.user-info{display:flex;align-items:center;gap:10px}
+.user-avatar{width:30px;height:30px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#0F6E56;overflow:hidden}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
+.user-name{font-size:14px;color:#555}
+.logout{font-size:13px;color:#999;text-decoration:none}
+.logout:hover{color:#333}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 57px)}
+.sidebar{background:#fff;border-right:1px solid #e8e6de;padding:1.5rem 1rem}
+.sidebar-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#aaa;margin-bottom:10px;padding:0 8px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;font-size:14px;color:#555;cursor:pointer;margin-bottom:2px}
+.nav-item:hover,.nav-item.active{background:#F7F6F2;color:#1a1a18}
+.nav-item.active{font-weight:500}
+.settings-panel{margin-top:2rem;padding-top:1.5rem;border-top:1px solid #e8e6de}
+.settings-panel label{display:block;font-size:12px;color:#888;margin-bottom:4px;margin-top:12px}
+.settings-panel input,.settings-panel textarea,.settings-panel select{width:100%;padding:7px 8px;border-radius:6px;border:1px solid #e0ddd4;font-size:13px;font-family:inherit;background:#F7F6F2;color:#1a1a18}
+.settings-panel textarea{min-height:80px;resize:vertical}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+.toggle-label{font-size:13px;color:#555}
+.toggle{position:relative;width:34px;height:18px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-sl{position:absolute;inset:0;background:#d4d0c8;border-radius:999px;cursor:pointer;transition:background 0.2s}
+.toggle input:checked+.toggle-sl{background:#0F6E56}
+.toggle-sl:before{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform 0.2s}
+.toggle input:checked+.toggle-sl:before{transform:translateX(16px)}
+.save-btn{width:100%;margin-top:14px;padding:8px;background:#0F6E56;color:#E1F5EE;border:none;border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer}
+.save-btn:hover{background:#085041}
+.main{padding:2rem 1.5rem;max-width:700px}
+.main-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+.main-header h1{font-size:20px;font-weight:500}
+.fetch-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;background:#0F6E56;color:#E1F5EE;border:none;border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer}
+.fetch-btn:hover{background:#085041}
+.fetch-btn:disabled{opacity:0.6;cursor:not-allowed}
+.status{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#fff;border:1px solid #e8e6de;border-radius:8px;margin-bottom:1.5rem;font-size:13px;color:#666}
+.dot{width:7px;height:7px;border-radius:50%;background:#d4d0c8;flex-shrink:0}
+.dot.active{background:#1D9E75}
+.dot.loading{background:#BA7517;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.email-card{background:#fff;border:1px solid #e8e6de;border-radius:12px;padding:1.25rem;margin-bottom:10px;transition:border-color 0.15s}
+.email-card:hover{border-color:#c8c4b8}
+.email-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.avatar{width:34px;height:34px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#0F6E56;flex-shrink:0}
+.email-meta{flex:1;min-width:0}
+.from-line{display:flex;align-items:center;gap:8px}
+.from-name{font-size:14px;font-weight:500}
+.new-badge{padding:2px 7px;background:#E1F5EE;color:#0F6E56;font-size:10px;font-weight:500;border-radius:999px}
+.replied-badge{padding:2px 7px;background:#EAF3DE;color:#3B6D11;font-size:10px;font-weight:500;border-radius:999px}
+.subject{font-size:13px;color:#666;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.time{font-size:12px;color:#aaa;flex-shrink:0}
+.preview{font-size:13px;color:#777;line-height:1.5;margin-bottom:10px}
+.actions{display:flex;gap:8px}
+.btn-gen{display:flex;align-items:center;gap:6px;padding:6px 12px;background:#0F6E56;color:#E1F5EE;border:none;border-radius:6px;font-size:12px;font-family:inherit;cursor:pointer}
+.btn-gen:hover{background:#085041}
+.btn-gen:disabled{opacity:0.5;cursor:not-allowed}
+.reply-box{background:#F7F6F2;border:1px solid #e8e6de;border-radius:8px;padding:12px;margin-top:12px}
+.reply-label{font-size:11px;color:#aaa;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.reply-text{font-size:13px;color:#333;line-height:1.6;white-space:pre-wrap}
+.reply-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btn-send{padding:6px 14px;background:#0F6E56;color:#E1F5EE;border:none;border-radius:6px;font-size:12px;font-family:inherit;cursor:pointer}
+.btn-edit,.btn-discard{padding:6px 12px;background:transparent;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:inherit;cursor:pointer;color:#555}
+.btn-edit:hover,.btn-discard:hover{background:#f0ede6}
+.reply-edit-area{width:100%;min-height:100px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;background:#fff;resize:vertical;margin-top:6px}
+.empty{text-align:center;padding:3rem 1rem;color:#aaa}
+.empty-icon{font-size:36px;margin-bottom:10px}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid #ccc;border-top-color:#0F6E56;border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:640px){.layout{grid-template-columns:1fr}.sidebar{display:none}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo"><div class="logo-dot"></div> ReplyMate</div>
+  <div class="user-info">
+    <div class="user-avatar" id="userAvatar"></div>
+    <span class="user-name" id="userName"></span>
+    <a href="/auth/logout" class="logout">Sign out</a>
+  </div>
+</nav>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-label">Inbox</div>
+    <div class="nav-item active">📬 Unread emails</div>
+
+    <div class="settings-panel">
+      <div class="sidebar-label">Agent settings</div>
+      <label>Your name</label>
+      <input type="text" id="agentName" placeholder="e.g. Alex">
+      <label>Reply tone & instructions</label>
+      <textarea id="toneInstructions" placeholder="e.g. Be professional and concise. I'm available Mon–Wed for calls."></textarea>
+      <div class="toggle-row">
+        <span class="toggle-label">Auto-send replies</span>
+        <label class="toggle"><input type="checkbox" id="autoSend"><span class="toggle-sl"></span></label>
+      </div>
+      <button class="save-btn" onclick="saveSettings()">Save settings</button>
+      <div id="saveMsg" style="font-size:12px;color:#1D9E75;margin-top:6px;display:none">Settings saved!</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="main-header">
+      <h1>Your inbox</h1>
+      <button class="fetch-btn" id="fetchBtn" onclick="fetchEmails()">
+        <span id="fetchIcon">↻</span> Check inbox
+      </button>
+    </div>
+
+    <div class="status">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">Click "Check inbox" to load your emails</span>
+    </div>
+
+    <div id="emailList">
+      <div class="empty">
+        <div class="empty-icon">📭</div>
+        <p>Your emails will appear here</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let settings = { autoSend: false, agentName: '', toneInstructions: 'Be professional, helpful, and concise.' };
+let emails = [];
+
+async function init() {
+  try {
+    const res = await fetch('/api/me');
+    const user = await res.json();
+    document.getElementById('userName').textContent = user.name || user.email;
+    const av = document.getElementById('userAvatar');
+    if (user.picture) {
+      av.innerHTML = `<img src="${user.picture}" alt="">`;
+    } else {
+      av.textContent = (user.name || 'U')[0].toUpperCase();
+    }
+  } catch(e) { window.location = '/'; }
+  const saved = localStorage.getItem('rm_settings');
+  if (saved) {
+    settings = JSON.parse(saved);
+    document.getElementById('agentName').value = settings.agentName || '';
+    document.getElementById('toneInstructions').value = settings.toneInstructions || '';
+    document.getElementById('autoSend').checked = settings.autoSend || false;
+  }
+}
+
+function saveSettings() {
+  settings.agentName = document.getElementById('agentName').value.trim();
+  settings.toneInstructions = document.getElementById('toneInstructions').value.trim() || settings.toneInstructions;
+  settings.autoSend = document.getElementById('autoSend').checked;
+  localStorage.setItem('rm_settings', JSON.stringify(settings));
+  const msg = document.getElementById('saveMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2000);
+}
+
+function setStatus(text, state) {
+  const dot = document.getElementById('statusDot');
+  dot.className = 'dot' + (state === 'active' ? ' active' : state === 'loading' ? ' loading' : '');
+  document.getElementById('statusText').textContent = text;
+}
+
+async function fetchEmails() {
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  document.getElementById('fetchIcon').innerHTML = '<span class="spinner"></span>';
+  setStatus('Fetching emails…', 'loading');
+  document.getElementById('emailList').innerHTML = `<div class="empty"><div class="spinner" style="width:24px;height:24px;border-width:3px;margin:0 auto 12px"></div><p>Loading your inbox…</p></div>`;
+  try {
+    const res = await fetch('/api/emails');
+    emails = await res.json();
+    if (emails.error) throw new Error(emails.error);
+    renderEmails();
+    setStatus(`${emails.length} unread email${emails.length !== 1 ? 's' : ''}`, emails.length ? 'active' : '');
+  } catch(e) {
+    setStatus('Failed to load emails', '');
+    document.getElementById('emailList').innerHTML = `<div class="empty"><p>Could not load emails. Try refreshing.</p></div>`;
+  }
+  btn.disabled = false;
+  document.getElementById('fetchIcon').textContent = '↻';
+}
+
+function renderEmails() {
+  if (!emails.length) {
+    document.getElementById('emailList').innerHTML = `<div class="empty"><div class="empty-icon">✅</div><p>All caught up — no unread emails!</p></div>`;
+    return;
+  }
+  document.getElementById('emailList').innerHTML = emails.map((e,i) => `
+    <div class="email-card" id="card-${i}">
+      <div class="email-top">
+        <div class="avatar">${initials(e.from)}</div>
+        <div class="email-meta">
+          <div class="from-line">
+            <span class="from-name">${esc(e.from)}</span>
+            <span class="new-badge" id="badge-${i}">New</span>
+          </div>
+          <div class="subject">${esc(e.subject)}</div>
+        </div>
+        <div class="time">${esc(e.time)}</div>
+      </div>
+      <div class="preview">${esc(e.preview)}</div>
+      <div class="actions">
+        <button class="btn-gen" id="genbtn-${i}" onclick="generateReply(${i})">✦ Generate reply</button>
+      </div>
+      <div id="reply-${i}"></div>
+    </div>`).join('');
+}
+
+async function generateReply(i) {
+  const e = emails[i];
+  const btn = document.getElementById(`genbtn-${i}`);
+  btn.disabled = true;
+  const rd = document.getElementById(`reply-${i}`);
+  rd.innerHTML = `<div class="reply-box"><div class="reply-label"><span class="spinner"></span> Generating reply…</div></div>`;
+  try {
+    const res = await fetch('/api/generate-reply', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ from: e.from, subject: e.subject, preview: e.preview, agentName: settings.agentName, toneInstructions: settings.toneInstructions })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    emails[i].replyText = data.reply;
+    showReply(i);
+    if (settings.autoSend) setTimeout(() => sendReply(i), 600);
+  } catch(err) {
+    rd.innerHTML = `<div class="reply-box"><div class="reply-label" style="color:#A32D2D">Failed to generate reply</div></div>`;
+    btn.disabled = false;
+  }
+}
+
+function showReply(i) {
+  const rd = document.getElementById(`reply-${i}`);
+  rd.innerHTML = `
+    <div class="reply-box">
+      <div class="reply-label">✦ Suggested reply ${settings.autoSend ? '· auto-sending…' : ''}</div>
+      <div class="reply-text">${esc(emails[i].replyText)}</div>
+      <div class="reply-actions">
+        <button class="btn-send" onclick="sendReply(${i})">Send reply</button>
+        <button class="btn-edit" onclick="editReply(${i})">Edit</button>
+        <button class="btn-discard" onclick="discardReply(${i})">Discard</button>
+      </div>
+    </div>`;
+}
+
+async function sendReply(i) {
+  const e = emails[i];
+  const rd = document.getElementById(`reply-${i}`);
+  rd.innerHTML = `<div class="reply-box"><div class="reply-label"><span class="spinner"></span> Sending…</div></div>`;
+  try {
+    const res = await fetch('/api/send-reply', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ threadId: e.threadId, toEmail: e.email, subject: e.subject, body: e.replyText })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById(`badge-${i}`).className = 'replied-badge';
+    document.getElementById(`badge-${i}`).textContent = 'Replied';
+    rd.innerHTML = `<div class="reply-box"><div class="reply-label" style="color:#1D9E75">✓ Reply sent successfully</div></div>`;
+  } catch(err) {
+    rd.innerHTML = `<div class="reply-box"><div class="reply-label" style="color:#A32D2D">Failed to send. Try again.</div></div>`;
+    showReply(i);
+  }
+}
+
+function editReply(i) {
+  const rd = document.getElementById(`reply-${i}`);
+  rd.innerHTML = `
+    <div class="reply-box">
+      <div class="reply-label">Edit reply</div>
+      <textarea class="reply-edit-area" id="editArea-${i}">${esc(emails[i].replyText)}</textarea>
+      <div class="reply-actions">
+        <button class="btn-send" onclick="confirmEdit(${i})">Confirm & send</button>
+        <button class="btn-discard" onclick="discardReply(${i})">Cancel</button>
+      </div>
+    </div>`;
+}
+
+function confirmEdit(i) {
+  emails[i].replyText = document.getElementById(`editArea-${i}`).value;
+  sendReply(i);
+}
+
+function discardReply(i) {
+  document.getElementById(`reply-${i}`).innerHTML = '';
+  document.getElementById(`genbtn-${i}`).disabled = false;
+}
+
+function initials(name) { return String(name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+init();
+</script>
+</body>
+</html>
