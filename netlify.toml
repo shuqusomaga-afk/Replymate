@@ -1,0 +1,38 @@
+[build]
+  functions = "netlify/functions"
+  publish = "."
+
+[[redirects]]
+  from = "/auth/google"
+  to = "/.netlify/functions/auth-google"
+  status = 200
+
+[[redirects]]
+  from = "/auth/callback"
+  to = "/.netlify/functions/auth-callback"
+  status = 200
+
+[[redirects]]
+  from = "/auth/logout"
+  to = "/.netlify/functions/auth-logout"
+  status = 200
+
+[[redirects]]
+  from = "/api/me"
+  to = "/.netlify/functions/api-me"
+  status = 200
+
+[[redirects]]
+  from = "/api/emails"
+  to = "/.netlify/functions/api-emails"
+  status = 200
+
+[[redirects]]
+  from = "/api/generate-reply"
+  to = "/.netlify/functions/api-generate-reply"
+  status = 200
+
+[[redirects]]
+  from = "/api/send-reply"
+  to = "/.netlify/functions/api-send-reply"
+  status = 200
