@@ -1,73 +1,1367 @@
-// netlify/functions/api-send-reply.js
-const { getSession } = require('./_session');
-const { supabase } = require('./_supabase');
-const { sendReply } = require('./_gmail');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReplyMate — AI Email Agent for Small Business</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green: #0F6E56;
+  --green-light: #1D9E75;
+  --green-tint: #E1F5EE;
+  --green-deep: #085041;
+  --ink: #0d1a10;
+  --white: #FAFAF8;
+  --gray: #555555;
+  --gray-light: #888780;
+  --border: #e8e6de;
+  --card: #ffffff;
+  --serif: 'DM Serif Display', Georgia, serif;
+  --sans: 'DM Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--sans); background: var(--white); color: var(--ink); overflow-x: hidden; }
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method not allowed' };
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 2rem; height: 60px;
+  background: rgba(250,250,248,0.88); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  transition: box-shadow 0.3s;
+}
+nav.scrolled { box-shadow: 0 2px 20px rgba(15,110,86,0.08); }
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo-mark {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--green); display: flex; align-items: center; justify-content: center;
+}
+.nav-logo-mark svg { width: 18px; height: 18px; fill: none; stroke: #E1F5EE; stroke-width: 2; stroke-linecap: round; }
+.nav-logo-text { font-size: 15px; font-weight: 500; color: var(--ink); letter-spacing: -0.01em; }
+.nav-links { display: flex; align-items: center; gap: 2rem; }
+.nav-links a { font-size: 14px; color: var(--gray); text-decoration: none; transition: color 0.2s; }
+.nav-links a:hover { color: var(--ink); }
+.nav-cta {
+  padding: 8px 20px; background: var(--green); color: var(--green-tint);
+  border: none; border-radius: 8px; font-size: 14px; font-family: var(--sans);
+  font-weight: 500; cursor: pointer; text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
+}
+.nav-cta:hover { background: var(--green-deep); transform: translateY(-1px); }
+
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 100px 2rem 5rem; text-align: center;
+  position: relative; overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(15,110,86,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(29,158,117,0.05) 0%, transparent 60%);
+}
+.hero-grid {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.4;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 100%);
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 14px; background: var(--green-tint); color: var(--green);
+  border-radius: 999px; font-size: 12px; font-weight: 500;
+  margin-bottom: 2rem; border: 1px solid rgba(15,110,86,0.15);
+  animation: fadeUp 0.6s ease both;
+}
+.hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green-light); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.8)} }
+.hero h1 {
+  font-family: var(--serif); font-size: clamp(42px, 7vw, 72px);
+  font-weight: 400; line-height: 1.08; letter-spacing: -0.02em;
+  color: var(--ink); max-width: 720px; margin-bottom: 1.5rem;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+.hero h1 em { font-style: italic; color: var(--green); }
+.hero h1 span { display: block; }
+.hero-sub {
+  font-size: clamp(16px, 2vw, 19px); color: var(--gray);
+  line-height: 1.7; max-width: 480px; margin: 0 auto 2.5rem;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+.hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; animation: fadeUp 0.6s 0.3s ease both; }
+.btn-primary {
+  padding: 14px 28px; background: var(--green); color: var(--green-tint);
+  border: none; border-radius: 10px; font-size: 15px; font-family: var(--sans);
+  font-weight: 500; cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.btn-primary:hover { background: var(--green-deep); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(15,110,86,0.25); }
+.btn-outline {
+  padding: 14px 28px; background: transparent; color: var(--ink);
+  border: 1.5px solid var(--border); border-radius: 10px; font-size: 15px;
+  font-family: var(--sans); cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.btn-outline:hover { border-color: var(--green); color: var(--green); transform: translateY(-2px); }
+.hero-note { font-size: 13px; color: var(--gray-light); margin-top: 1rem; animation: fadeUp 0.6s 0.4s ease both; }
+
+/* ── SOCIAL PROOF STRIP ── */
+.proof-strip {
+  padding: 1.25rem 2rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center; gap: 3rem; flex-wrap: wrap;
+  background: var(--card);
+}
+.proof-item { display: flex; align-items: center; gap: 8px; }
+.proof-num { font-size: 20px; font-weight: 500; color: var(--ink); }
+.proof-label { font-size: 13px; color: var(--gray-light); }
+.proof-divider { width: 1px; height: 28px; background: var(--border); }
+
+/* ── FLOATING EMAIL CARD ── */
+.hero-card-wrap {
+  width: 100%; max-width: 480px; margin: 3rem auto 0;
+  animation: fadeUp 0.7s 0.5s ease both;
+  position: relative;
+}
+.email-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.25rem; text-align: left;
+  box-shadow: 0 4px 40px rgba(15,110,86,0.1);
+}
+.email-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.email-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--green-tint); display: flex; align-items: center;
+  justify-content: center; font-size: 13px; font-weight: 500; color: var(--green);
+  flex-shrink: 0;
+}
+.email-from { font-size: 14px; font-weight: 500; color: var(--ink); }
+.email-time { font-size: 12px; color: var(--gray-light); margin-left: auto; }
+.email-subject { font-size: 13px; color: var(--gray); margin-bottom: 8px; }
+.email-body { font-size: 13px; color: var(--gray); line-height: 1.6; margin-bottom: 12px; }
+.email-reply-box {
+  background: var(--green-tint); border-radius: 10px; padding: 10px 12px;
+  border-left: 3px solid var(--green);
+}
+.email-reply-label { font-size: 11px; color: var(--green); font-weight: 500; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+.email-reply-text { font-size: 13px; color: var(--green-deep); line-height: 1.6; }
+.typing-dot { display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--green); animation: blink 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%,100%{opacity:0.2} 50%{opacity:1} }
+
+/* ── SECTIONS ── */
+section { padding: 5rem 2rem; }
+.container { max-width: 900px; margin: 0 auto; }
+.section-tag {
+  display: inline-block; padding: 4px 12px;
+  background: var(--green-tint); color: var(--green);
+  border-radius: 999px; font-size: 11px; font-weight: 500;
+  letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 1rem;
+}
+.section-title {
+  font-family: var(--serif); font-size: clamp(28px, 4vw, 42px);
+  font-weight: 400; color: var(--ink); margin-bottom: 0.75rem;
+  line-height: 1.15;
+}
+.section-title em { font-style: italic; color: var(--green); }
+.section-sub { font-size: 17px; color: var(--gray); line-height: 1.7; max-width: 520px; }
+
+/* ── FEATURES ── */
+.features-section { background: var(--card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-top: 3rem; }
+.feature-item { background: var(--card); padding: 1.75rem; transition: background 0.2s; }
+.feature-item:hover { background: #F5FBF8; }
+.feature-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: var(--green-tint); display: flex; align-items: center;
+  justify-content: center; margin-bottom: 1rem;
+}
+.feature-icon svg { width: 22px; height: 22px; stroke: var(--green); stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.feature-title { font-size: 15px; font-weight: 500; color: var(--ink); margin-bottom: 6px; }
+.feature-desc { font-size: 13px; color: var(--gray); line-height: 1.65; }
+
+/* ── HOW IT WORKS ── */
+.how-section { background: var(--white); }
+.steps { display: flex; flex-direction: column; gap: 0; margin-top: 3rem; max-width: 600px; }
+.step { display: flex; gap: 1.5rem; padding: 1.75rem 0; border-bottom: 1px solid var(--border); position: relative; }
+.step:last-child { border-bottom: none; }
+.step-num {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--green); color: var(--green-tint);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 500; flex-shrink: 0; margin-top: 2px;
+}
+.step-title { font-size: 16px; font-weight: 500; color: var(--ink); margin-bottom: 5px; }
+.step-desc { font-size: 14px; color: var(--gray); line-height: 1.65; }
+
+/* ── PRICING ── */
+.pricing-section { background: var(--card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 3rem; }
+.plan-card {
+  background: var(--white); border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 1.75rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.plan-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(15,110,86,0.1); }
+.plan-card.featured { background: var(--ink); border-color: var(--ink); }
+.plan-card.featured .plan-name { color: rgba(255,255,255,0.6); }
+.plan-card.featured .plan-price { color: #ffffff; }
+.plan-card.featured .plan-period { color: rgba(255,255,255,0.5); }
+.plan-card.featured .plan-feature { color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.1); }
+.plan-card.featured .plan-feature::before { color: #1D9E75; }
+.plan-card.featured .btn-plan { background: var(--green); color: var(--green-tint); border: none; }
+.plan-card.featured .btn-plan:hover { background: var(--green-light); }
+.popular-tag {
+  display: inline-block; padding: 3px 10px; background: var(--green-tint);
+  color: var(--green); border-radius: 999px; font-size: 11px;
+  font-weight: 500; margin-bottom: 14px;
+}
+.plan-card.featured .popular-tag { background: rgba(29,158,117,0.2); color: #1D9E75; }
+.plan-name { font-size: 13px; color: var(--gray-light); margin-bottom: 8px; }
+.plan-price { font-family: var(--serif); font-size: 42px; color: var(--ink); line-height: 1; }
+.plan-period { font-size: 13px; color: var(--gray-light); margin-bottom: 1.5rem; }
+.plan-features { list-style: none; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 10px; }
+.plan-feature {
+  font-size: 13px; color: var(--gray); padding-bottom: 10px;
+  border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 8px;
+}
+.plan-feature:last-child { border-bottom: none; padding-bottom: 0; }
+.plan-feature::before { content: '✓'; color: var(--green); font-weight: 500; flex-shrink: 0; }
+.btn-plan {
+  width: 100%; padding: 11px; border-radius: 8px;
+  font-size: 14px; font-family: var(--sans); font-weight: 500;
+  cursor: pointer; border: 1.5px solid var(--border);
+  background: transparent; color: var(--ink);
+  transition: all 0.2s; text-decoration: none; display: block; text-align: center;
+}
+.btn-plan:hover { border-color: var(--green); color: var(--green); }
+
+/* ── TESTIMONIALS ── */
+.testimonials-section { background: var(--white); }
+.testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 3rem; }
+.testimonial {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.5rem;
+  transition: transform 0.2s;
+}
+.testimonial:hover { transform: translateY(-3px); }
+.stars { color: #BA7517; font-size: 14px; letter-spacing: 2px; margin-bottom: 12px; }
+.testimonial-text { font-family: var(--serif); font-size: 16px; color: var(--ink); line-height: 1.6; margin-bottom: 1.25rem; font-style: italic; }
+.testimonial-author { display: flex; align-items: center; gap: 10px; }
+.author-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--green-tint); display: flex; align-items: center;
+  justify-content: center; font-size: 12px; font-weight: 500; color: var(--green);
+}
+.author-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+.author-role { font-size: 12px; color: var(--gray-light); }
+
+/* ── FAQ ── */
+.faq-section { background: var(--card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.faq-list { max-width: 640px; margin-top: 3rem; }
+.faq-item { border-bottom: 1px solid var(--border); }
+.faq-q {
+  width: 100%; padding: 1.25rem 0; display: flex; align-items: center;
+  justify-content: space-between; font-size: 15px; font-weight: 500;
+  color: var(--ink); cursor: pointer; background: none; border: none;
+  font-family: var(--sans); text-align: left; gap: 1rem;
+  transition: color 0.2s;
+}
+.faq-q:hover { color: var(--green); }
+.faq-arrow { flex-shrink: 0; transition: transform 0.3s; color: var(--gray-light); }
+.faq-item.open .faq-arrow { transform: rotate(45deg); color: var(--green); }
+.faq-a {
+  font-size: 14px; color: var(--gray); line-height: 1.7;
+  max-height: 0; overflow: hidden; transition: max-height 0.35s ease, padding 0.3s;
+}
+.faq-item.open .faq-a { max-height: 300px; padding-bottom: 1.25rem; }
+
+/* ── CTA SECTION ── */
+.cta-section {
+  background: var(--ink); padding: 6rem 2rem; text-align: center;
+  position: relative; overflow: hidden;
+}
+.cta-section::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 60% 80% at 50% 50%, rgba(15,110,86,0.3) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cta-section h2 {
+  font-family: var(--serif); font-size: clamp(32px, 5vw, 52px);
+  font-weight: 400; color: #ffffff; margin-bottom: 1rem;
+  position: relative;
+}
+.cta-section h2 em { font-style: italic; color: #1D9E75; }
+.cta-section p { font-size: 17px; color: rgba(255,255,255,0.6); margin-bottom: 2.5rem; position: relative; }
+.cta-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 15px 32px; background: var(--green); color: var(--green-tint);
+  border: none; border-radius: 10px; font-size: 16px;
+  font-family: var(--sans); font-weight: 500; cursor: pointer;
+  text-decoration: none; position: relative;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.cta-btn:hover { background: var(--green-light); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(15,110,86,0.4); }
+.cta-note { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 1rem; position: relative; }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--card); border-top: 1px solid var(--border);
+  padding: 2rem; text-align: center;
+}
+.footer-logo { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 0.75rem; text-decoration: none; }
+.footer-logo-mark { width: 24px; height: 24px; border-radius: 6px; background: var(--green); display: flex; align-items: center; justify-content: center; }
+.footer-logo-mark svg { width: 14px; height: 14px; fill: none; stroke: var(--green-tint); stroke-width: 2; stroke-linecap: round; }
+.footer-logo-text { font-size: 14px; font-weight: 500; color: var(--ink); }
+.footer-copy { font-size: 13px; color: var(--gray-light); }
+
+/* ── DEMO SECTION ── */
+.demo-section { background: var(--white); }
+.demo-app {
+  margin-top: 3rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 8px 48px rgba(15,110,86,0.08);
+  max-width: 640px;
+}
+.rm-tabs { display: flex; gap: 6px; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+.rm-tab {
+  padding: 8px 18px; border: 1px solid var(--border); border-radius: 8px;
+  background: transparent; color: var(--gray); font-size: 13px; font-family: var(--sans);
+  cursor: pointer; transition: all 0.2s;
+}
+.rm-tab.active { background: var(--green); color: var(--green-tint); border-color: var(--green); }
+.rm-tab:hover:not(.active) { border-color: var(--green); color: var(--green); }
+.rm-field { margin-bottom: 1rem; }
+.rm-label { display: block; font-size: 13px; font-weight: 500; color: var(--gray); margin-bottom: 5px; }
+.rm-textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 10px; font-size: 14px; font-family: var(--sans);
+  color: var(--ink); background: var(--white); resize: vertical;
+  transition: border-color 0.2s;
+}
+.rm-textarea:focus { outline: none; border-color: var(--green); }
+.rm-input {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 10px; font-size: 14px; font-family: var(--sans);
+  color: var(--ink); background: var(--white); transition: border-color 0.2s;
+}
+.rm-input:focus { outline: none; border-color: var(--green); }
+.rm-tone-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.rm-tone {
+  padding: 8px 6px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--white); color: var(--gray); font-size: 12px; font-family: var(--sans);
+  cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.rm-tone.active { border-color: var(--green); color: var(--green); background: var(--green-tint); }
+.rm-tone:hover:not(.active) { border-color: var(--green); color: var(--green); }
+.rm-gen-btn {
+  width: 100%; padding: 13px; background: var(--green); color: var(--green-tint);
+  border: none; border-radius: 10px; font-size: 15px; font-family: var(--sans);
+  font-weight: 500; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; gap: 8px; margin-top: 0.5rem; transition: background 0.2s;
+}
+.rm-gen-btn:hover { background: var(--green-deep); }
+.rm-gen-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.rm-reply-box {
+  margin-top: 1rem; background: var(--green-tint);
+  border: 1px solid rgba(15,110,86,0.15); border-left: 3px solid var(--green);
+  border-radius: 12px; padding: 1rem 1.25rem;
+}
+.rm-reply-lbl { font-size: 11px; color: var(--green); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+.rm-reply-text { font-size: 14px; color: var(--green-deep); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.rm-reply-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.rm-reply-actions button {
+  padding: 7px 14px; font-size: 12px; font-family: var(--sans); font-weight: 500;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--card);
+  color: var(--ink); cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.15s;
+}
+.rm-reply-actions button:hover { border-color: var(--green); color: var(--green); }
+.rm-typing { display: flex; gap: 5px; padding: 6px 0; }
+.rm-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: rm-blink 1.2s infinite; }
+.rm-dot:nth-child(2) { animation-delay: 0.2s; }
+.rm-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes rm-blink { 0%,100%{opacity:0.2} 50%{opacity:1} }
+.rm-metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1.25rem; }
+.rm-metric { background: var(--green-tint); border-radius: 10px; padding: 14px; text-align: center; }
+.rm-metric-val { font-size: 22px; font-weight: 500; color: var(--ink); }
+.rm-metric-lbl { font-size: 11px; color: var(--gray); margin-top: 3px; }
+.rm-history-item {
+  border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+  margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s;
+}
+.rm-history-item:hover { border-color: var(--green); }
+.rm-history-from { font-size: 13px; font-weight: 500; color: var(--ink); }
+.rm-history-preview { font-size: 12px; color: var(--gray); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-empty { text-align: center; padding: 2rem; color: var(--gray-light); font-size: 13px; }
+.rm-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--green); color: var(--green-tint); padding: 8px 20px;
+  border-radius: 999px; font-size: 13px; font-weight: 500; z-index: 999;
+  display: none; pointer-events: none;
+}
+
+
+/* ── GUARANTEE BADGE ── */
+.guarantee-strip {
+  display: flex; align-items: center; justify-content: center;
+  gap: 2rem; flex-wrap: wrap;
+  padding: 1.25rem 2rem; margin-top: 2rem;
+  background: var(--green-tint); border-radius: 14px;
+  border: 1px solid rgba(15,110,86,0.15);
+}
+.guarantee-item { display: flex; align-items: center; gap: 10px; }
+.guarantee-icon { font-size: 22px; }
+.guarantee-text { font-size: 13px; color: var(--green-deep); line-height: 1.4; }
+.guarantee-text strong { display: block; font-size: 14px; font-weight: 500; }
+
+/* ── EMAIL CAPTURE ── */
+.capture-section {
+  background: var(--ink); padding: 4rem 2rem; text-align: center;
+  position: relative; overflow: hidden;
+}
+.capture-section::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 50% 70% at 50% 50%, rgba(15,110,86,0.25) 0%, transparent 70%);
+  pointer-events: none;
+}
+.capture-section h2 {
+  font-family: var(--serif); font-size: clamp(26px, 4vw, 38px);
+  font-weight: 400; color: #fff; margin-bottom: 0.75rem; position: relative;
+}
+.capture-section h2 em { font-style: italic; color: #1D9E75; }
+.capture-section p { font-size: 16px; color: rgba(255,255,255,0.55); margin-bottom: 2rem; position: relative; }
+.capture-form {
+  display: flex; gap: 10px; justify-content: center;
+  flex-wrap: wrap; max-width: 460px; margin: 0 auto;
+  position: relative;
+}
+.capture-input {
+  flex: 1; min-width: 220px; padding: 13px 18px;
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+  background: rgba(255,255,255,0.08); color: #fff;
+  font-size: 15px; font-family: var(--sans);
+  transition: border-color 0.2s;
+}
+.capture-input::placeholder { color: rgba(255,255,255,0.35); }
+.capture-input:focus { outline: none; border-color: var(--green-light); }
+.capture-btn {
+  padding: 13px 24px; background: var(--green); color: var(--green-tint);
+  border: none; border-radius: 10px; font-size: 15px; font-family: var(--sans);
+  font-weight: 500; cursor: pointer; white-space: nowrap;
+  transition: background 0.2s;
+}
+.capture-btn:hover { background: var(--green-light); }
+.capture-note { font-size: 12px; color: rgba(255,255,255,0.3); margin-top: 1rem; position: relative; }
+.capture-success {
+  display: none; color: #1D9E75; font-size: 15px; font-weight: 500;
+  position: relative; padding: 10px;
+}
+
+/* ── LIVE TICKER ── */
+.ticker-bar {
+  background: var(--green-tint); border-bottom: 1px solid rgba(15,110,86,0.12);
+  padding: 10px 2rem; overflow: hidden; position: relative;
+}
+.ticker-inner {
+  display: flex; gap: 3rem; align-items: center;
+  animation: ticker-scroll 28s linear infinite;
+  white-space: nowrap; width: max-content;
+}
+.ticker-item { font-size: 13px; color: var(--green-deep); display: flex; align-items: center; gap: 6px; }
+.ticker-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green-light); flex-shrink: 0; animation: pulse 2s infinite; }
+@keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+/* ── EXIT POPUP ── */
+.exit-popup-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+}
+.exit-popup-overlay.show { display: flex; }
+.exit-popup {
+  background: var(--card); border-radius: 20px; padding: 2.5rem 2rem;
+  max-width: 420px; width: 90%; text-align: center;
+  border: 1px solid var(--border); position: relative;
+  animation: popIn 0.3s ease;
+}
+@keyframes popIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.exit-popup-close {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: none; font-size: 20px; color: var(--gray-light);
+  cursor: pointer; line-height: 1;
+}
+.exit-popup h3 {
+  font-family: var(--serif); font-size: 26px; font-weight: 400;
+  color: var(--ink); margin-bottom: 0.5rem;
+}
+.exit-popup h3 em { color: var(--green); font-style: italic; }
+.exit-popup p { font-size: 14px; color: var(--gray); margin-bottom: 1.5rem; line-height: 1.6; }
+.exit-popup-form { display: flex; flex-direction: column; gap: 10px; }
+.exit-popup-input {
+  padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px;
+  font-size: 14px; font-family: var(--sans); color: var(--ink);
+  background: var(--white);
+}
+.exit-popup-input:focus { outline: none; border-color: var(--green); }
+.exit-popup-btn {
+  padding: 13px; background: var(--green); color: var(--green-tint);
+  border: none; border-radius: 10px; font-size: 15px; font-family: var(--sans);
+  font-weight: 500; cursor: pointer; transition: background 0.2s;
+}
+.exit-popup-btn:hover { background: var(--green-deep); }
+.exit-popup-skip { font-size: 12px; color: var(--gray-light); margin-top: 8px; cursor: pointer; text-decoration: underline; }
+.exit-popup-success { display: none; color: var(--green); font-size: 15px; font-weight: 500; padding: 10px 0; }
+
+/* ── UPDATED FOOTER ── */
+.footer-links { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.footer-links a { font-size: 13px; color: var(--gray-light); text-decoration: none; transition: color 0.2s; }
+.footer-links a:hover { color: var(--green); }
+.footer-contact { font-size: 13px; color: var(--gray-light); margin-bottom: 0.5rem; }
+.footer-contact a { color: var(--green); text-decoration: none; }
+.footer-contact a:hover { text-decoration: underline; }
+
+/* ── TAWK CHAT PLACEHOLDER ── */
+.chat-widget {
+  position: fixed; bottom: 24px; right: 24px; z-index: 998;
+}
+.chat-btn {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--green); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(15,110,86,0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.chat-btn:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(15,110,86,0.45); }
+.chat-btn svg { width: 24px; height: 24px; fill: none; stroke: #E1F5EE; stroke-width: 2; stroke-linecap: round; }
+.chat-bubble {
+  display: none; position: absolute; bottom: 64px; right: 0;
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 1.25rem; width: 280px; box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+}
+.chat-bubble.open { display: block; animation: popIn 0.2s ease; }
+.chat-bubble-title { font-size: 14px; font-weight: 500; color: var(--ink); margin-bottom: 4px; }
+.chat-bubble-sub { font-size: 13px; color: var(--gray); margin-bottom: 12px; }
+.chat-bubble-input {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 13px; font-family: var(--sans);
+  color: var(--ink); background: var(--white); margin-bottom: 8px;
+}
+.chat-bubble-input:focus { outline: none; border-color: var(--green); }
+.chat-bubble-send {
+  width: 100%; padding: 9px; background: var(--green); color: var(--green-tint);
+  border: none; border-radius: 8px; font-size: 13px; font-family: var(--sans);
+  font-weight: 500; cursor: pointer;
+}
+
+/* ── AFFILIATE SECTION ── */
+.affiliate-section { background: var(--white); border-top: 1px solid var(--border); }
+.affiliate-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 2.5rem; display: grid;
+  grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center;
+  margin-top: 2.5rem;
+}
+@media (max-width: 640px) { .affiliate-card { grid-template-columns: 1fr; } }
+.affiliate-steps { display: flex; flex-direction: column; gap: 1rem; }
+.affiliate-step { display: flex; gap: 12px; align-items: flex-start; }
+.affiliate-num {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--green-tint);
+  color: var(--green); font-size: 12px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.affiliate-step-text { font-size: 14px; color: var(--gray); line-height: 1.5; }
+.affiliate-step-text strong { color: var(--ink); display: block; font-size: 14px; }
+.affiliate-cta-box { text-align: center; }
+.affiliate-pct {
+  font-family: var(--serif); font-size: 64px; color: var(--green);
+  line-height: 1; margin-bottom: 6px;
+}
+.affiliate-pct-sub { font-size: 14px; color: var(--gray); margin-bottom: 1.5rem; }
+.btn-affiliate {
+  display: inline-block; padding: 13px 28px; background: var(--green);
+  color: var(--green-tint); border: none; border-radius: 10px;
+  font-size: 15px; font-family: var(--sans); font-weight: 500;
+  cursor: pointer; text-decoration: none; transition: background 0.2s;
+}
+.btn-affiliate:hover { background: var(--green-deep); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ── MOBILE ── */
+@media (max-width: 640px) {
+  .nav-links { display: none; }
+  .hero { padding: 80px 1.25rem 3rem; }
+  section { padding: 3.5rem 1.25rem; }
+  .proof-strip { gap: 1.5rem; padding: 1.25rem; }
+  .proof-divider { display: none; }
+  .btn-primary, .btn-outline { width: 100%; justify-content: center; }
+  .hero-actions { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+<!-- SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://ofpfjgeqxrewplwnfdbg.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcGZqZ2VxeHJld3Bsd25mZGJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5NjQ0MjEsImV4cCI6MjA5NzU0MDQyMX0.qgBoAbA6WLHYz7xaBIwprKW3RJ_MQCgAWyzM8F0skow';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  async function saveEmailToSupabase(email) {
+    const { error } = await supabase.from('users').upsert({ email }, { onConflict: 'email' });
+    if (error) console.error('Supabase error:', error.message);
   }
 
-  const session = getSession(event);
-
-  if (!session || !session.userId) {
-    return {
-      statusCode: 401,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Not authenticated' }),
-    };
-  }
-
-  let payload;
-  try {
-    payload = JSON.parse(event.body);
-  } catch {
-    return {
-      statusCode: 400,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Invalid JSON body' }),
-    };
-  }
-
-  const { threadId, to, subject, replyBody, inReplyTo, replyLogId } = payload;
-
-  if (!threadId || !to || !replyBody) {
-    return {
-      statusCode: 400,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'threadId, to, and replyBody are required' }),
-    };
-  }
-
-  try {
-    const result = await sendReply(session.userId, {
-      threadId,
-      to,
-      subject: subject || '',
-      body: replyBody,
-      inReplyTo,
+  async function saveReplyToSupabase(emailSnippet, reply, tone) {
+    const { error } = await supabase.from('email_replies').insert({ 
+      email_snippet: emailSnippet.slice(0, 500), 
+      reply_text: reply, 
+      tone 
     });
-
-    // Update the matching draft log row to "sent", if we know which one it was
-    if (replyLogId) {
-      await supabase
-        .from('email_replies')
-        .update({ status: 'sent' })
-        .eq('id', replyLogId)
-        .eq('user_id', session.userId);
-    }
-
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ success: true, messageId: result.id }),
-    };
-  } catch (err) {
-    console.error('api-send-reply error:', err);
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Failed to send reply' }),
-    };
+    if (error) console.error('Supabase error:', error.message);
   }
-};
+</script>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    </div>
+    <span class="nav-logo-text">ReplyMate</span>
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#demo">Try it free</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+  </div>
+  <a href="#pricing" class="nav-cta">Get started free</a>
+</nav>
+
+
+<!-- ACTIVITY TICKER -->
+<div class="ticker-bar" id="ticker-bar">
+  <div class="ticker-inner" id="ticker-inner">
+    <div class="ticker-item"><span class="ticker-dot"></span>Amaka just generated a reply — 2 min ago</div>
+    <div class="ticker-item"><span class="ticker-dot"></span>Tunde signed up for Pro — 7 min ago</div>
+    <div class="ticker-item"><span class="ticker-dot"></span>Sarah saved 2.5 hours this week</div>
+    <div class="ticker-item"><span class="ticker-dot"></span>David just sent his first AI reply — 12 min ago</div>
+    <div class="ticker-item"><span class="ticker-dot"></span>Chisom upgraded to Business — 18 min ago</div>
+    <div class="ticker-item"><span class="ticker-dot"></span>Emeka just generated a reply — 2 min ago</div>
+    <div class="ticker-item"><span class="ticker-dot"></span>Fatima signed up for Pro — 7 min ago</div>
+    <div class="ticker-item"><span class="ticker-dot"></span>James saved 2.5 hours this week</div>
+    <div class="ticker-item"><span class="ticker-dot"></span>Ngozi just sent her first AI reply — 12 min ago</div>
+    <div class="ticker-item"><span class="ticker-dot"></span>Adeola upgraded to Business — 18 min ago</div>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-badge">
+    <span class="hero-badge-dot"></span>
+    AI-powered email replies
+  </div>
+  <h1>
+    <span>Your inbox,</span>
+    <em>replied for you</em>
+  </h1>
+  <p class="hero-sub">ReplyMate connects to your Gmail and automatically replies to emails on your behalf — professionally, instantly, and in your voice.</p>
+  <div class="hero-actions">
+    <a href="#pricing" class="btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Connect your Gmail
+    </a>
+    <a href="#how" class="btn-outline">See how it works</a>
+  </div>
+  <p class="hero-note">No credit card required &nbsp;·&nbsp; Setup in 60 seconds &nbsp;·&nbsp; Cancel anytime</p>
+
+  <div class="hero-card-wrap">
+    <div class="email-card">
+      <div class="email-card-top">
+        <div class="email-avatar">DK</div>
+        <div>
+          <div class="email-from">David Kim</div>
+          <div class="email-subject" style="font-size:12px;color:var(--gray-light)">Re: Partnership proposal</div>
+        </div>
+        <div class="email-time">just now</div>
+      </div>
+      <div class="email-body">Hi, I wanted to follow up on the proposal we discussed. Could we schedule a call this week to go over the budget?</div>
+      <div class="email-reply-box">
+        <div class="email-reply-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          ReplyMate is writing a reply…
+        </div>
+        <div class="email-reply-text">Hi David, thanks for reaching out! I'd love to connect — I'm available Tuesday and Thursday this week. Would either work for you?<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROOF STRIP -->
+<div class="proof-strip">
+  <div class="proof-item">
+    <div class="proof-num">2.5h</div>
+    <div class="proof-label">saved per day</div>
+  </div>
+  <div class="proof-divider"></div>
+  <div class="proof-item">
+    <div class="proof-num">&lt;30s</div>
+    <div class="proof-label">reply time</div>
+  </div>
+  <div class="proof-divider"></div>
+  <div class="proof-item">
+    <div class="proof-num">200+</div>
+    <div class="proof-label">businesses using it</div>
+  </div>
+  <div class="proof-divider"></div>
+  <div class="proof-item">
+    <div class="proof-num">0</div>
+    <div class="proof-label">missed emails</div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-tag">Features</div>
+      <h2 class="section-title">Everything your inbox needs</h2>
+      <p class="section-sub">Built specifically for small business owners who get too many emails and not enough time.</p>
+    </div>
+    <div class="features-grid reveal">
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div class="feature-title">AI-powered replies</div>
+        <div class="feature-desc">Claude AI reads each email and writes a reply that sounds exactly like you — naturally and professionally.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div class="feature-title">Gmail integration</div>
+        <div class="feature-desc">Sign in with Google. No new apps, no forwarding, no technical setup. Connected in 60 seconds.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+        </div>
+        <div class="feature-title">Custom tone control</div>
+        <div class="feature-desc">Tell the agent your writing style, your availability, what to say and what to avoid. It listens.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="feature-title">Approve before send</div>
+        <div class="feature-desc">Review every reply before it goes out, or enable auto-send for complete hands-free automation.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        </div>
+        <div class="feature-title">Smart inbox view</div>
+        <div class="feature-desc">See all unread emails in a clean dashboard. Generate and manage replies from one place.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="feature-title">Multi-user ready</div>
+        <div class="feature-desc">Each person signs in with their own Gmail. Perfect for teams and agencies managing multiple accounts.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-tag">How it works</div>
+      <h2 class="section-title">Up and running in <em>3 steps</em></h2>
+      <p class="section-sub">No technical skills needed. You'll be handling emails with AI in under 10 minutes.</p>
+    </div>
+    <div class="steps reveal">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Connect your Gmail</div>
+          <div class="step-desc">Click "Connect Gmail" and sign in with your Google account. ReplyMate only requests the permissions it needs — read and send emails on your behalf.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Set your preferences</div>
+          <div class="step-desc">Tell ReplyMate your name, how you like to write, your availability, and anything the AI should always mention or always avoid. Takes 3 minutes.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Let it handle your inbox</div>
+          <div class="step-desc">Open your inbox, tap "Generate reply" on any email, review it, and hit send — or turn on auto-send to have replies go out automatically. You're done.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE DEMO -->
+<section class="demo-section" id="demo">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-tag">Try it now</div>
+      <h2 class="section-title">See ReplyMate <em>in action</em></h2>
+      <p class="section-sub">Paste any email below and watch AI write a professional reply in seconds — for free, right here.</p>
+    </div>
+    <div class="demo-app reveal" id="demo-app-container">
+      <!-- ReplyMate App -->
+      <div id="rm-app">
+        <div class="rm-tabs">
+          <button class="rm-tab active" onclick="rmTab('compose',this)">✍️ Compose</button>
+          <button class="rm-tab" onclick="rmTab('history',this)">🕓 History</button>
+          <button class="rm-tab" onclick="rmTab('settings',this)">⚙️ Settings</button>
+        </div>
+
+        <!-- COMPOSE -->
+        <div id="rm-compose" class="rm-panel">
+          <div class="rm-field">
+            <label class="rm-label">Email you received</label>
+            <textarea id="rm-email" class="rm-textarea" rows="5" placeholder="Paste the email you need to reply to here..."></textarea>
+          </div>
+          <div class="rm-field">
+            <label class="rm-label">Tone</label>
+            <div class="rm-tone-grid">
+              <button class="rm-tone active" onclick="rmTone(this,'Professional')">Professional</button>
+              <button class="rm-tone" onclick="rmTone(this,'Friendly')">Friendly</button>
+              <button class="rm-tone" onclick="rmTone(this,'Formal')">Formal</button>
+              <button class="rm-tone" onclick="rmTone(this,'Concise')">Concise</button>
+              <button class="rm-tone" onclick="rmTone(this,'Warm')">Warm</button>
+              <button class="rm-tone" onclick="rmTone(this,'Assertive')">Assertive</button>
+            </div>
+          </div>
+          <div class="rm-field">
+            <label class="rm-label">Key points to include <span style="font-weight:400;opacity:0.6">(optional)</span></label>
+            <textarea id="rm-context" class="rm-textarea" rows="2" placeholder="e.g. Available Thursday 2pm, price is fixed..."></textarea>
+          </div>
+          <div class="rm-field">
+            <label class="rm-label">Your name</label>
+            <input id="rm-name" class="rm-input" type="text" placeholder="e.g. Chidi">
+          </div>
+          <button class="rm-gen-btn" id="rm-gen-btn" onclick="rmGenerate()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Generate Reply
+          </button>
+          <div id="rm-reply-area"></div>
+        </div>
+
+        <!-- HISTORY -->
+        <div id="rm-history" class="rm-panel" style="display:none">
+          <div class="rm-metrics">
+            <div class="rm-metric"><div class="rm-metric-val" id="rm-m-total">0</div><div class="rm-metric-lbl">Replies generated</div></div>
+            <div class="rm-metric"><div class="rm-metric-val" id="rm-m-saved">0 min</div><div class="rm-metric-lbl">Time saved</div></div>
+            <div class="rm-metric"><div class="rm-metric-val" id="rm-m-today">0</div><div class="rm-metric-lbl">Today</div></div>
+          </div>
+          <div id="rm-history-list"><div class="rm-empty">No replies yet — generate your first one above!</div></div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="rm-settings" class="rm-panel" style="display:none">
+          <div class="rm-field">
+            <label class="rm-label">Your business name</label>
+            <input id="rm-biz-name" class="rm-input" type="text" placeholder="e.g. Chidi Consulting">
+          </div>
+          <div class="rm-field">
+            <label class="rm-label">Business context <span style="font-weight:400;opacity:0.6">(helps AI reply accurately)</span></label>
+            <textarea id="rm-biz-ctx" class="rm-textarea" rows="3" placeholder="e.g. We are a digital marketing agency in Lagos. We offer social media, SEO, and paid ads. Prices start from ₦50,000/month."></textarea>
+          </div>
+          <div class="rm-field">
+            <label class="rm-label">Default sign-off name</label>
+            <input id="rm-default-name" class="rm-input" type="text" placeholder="e.g. Chidi">
+          </div>
+          <button class="rm-gen-btn" onclick="rmSaveSettings()">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing-section" id="pricing">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-tag">Pricing</div>
+      <h2 class="section-title">Simple, honest pricing</h2>
+      <p class="section-sub">No hidden fees. No surprise charges. Cancel any time.</p>
+    </div>
+    <div class="pricing-grid reveal">
+      <div class="plan-card">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">$49</div>
+        <div class="plan-period">one-time payment</div>
+        <ul class="plan-features">
+          <li class="plan-feature">Gmail setup & connection</li>
+          <li class="plan-feature">AI reply generation</li>
+          <li class="plan-feature">Approve-before-send mode</li>
+          <li class="plan-feature">Tone customization</li>
+          <li class="plan-feature">1 week of support</li>
+        </ul>
+        <a href="https://selar.com/7578vg2ayw" target="_blank" class="btn-plan">Get started — $49</a>
+      </div>
+      <div class="plan-card featured">
+        <div class="popular-tag">Most popular</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price" style="color:#fff">$99</div>
+        <div class="plan-period">per month</div>
+        <ul class="plan-features">
+          <li class="plan-feature">Everything in Starter</li>
+          <li class="plan-feature">Auto-send mode</li>
+          <li class="plan-feature">Unlimited emails</li>
+          <li class="plan-feature">Monthly tune-ups</li>
+          <li class="plan-feature">Priority support</li>
+        </ul>
+        <a href="https://selar.com/3199126180" target="_blank" class="btn-plan">Get Pro — $99/mo</a>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">Business</div>
+        <div class="plan-price">$299</div>
+        <div class="plan-period">one-time payment</div>
+        <ul class="plan-features">
+          <li class="plan-feature">Full custom setup</li>
+          <li class="plan-feature">Team inbox support</li>
+          <li class="plan-feature">Custom branding</li>
+          <li class="plan-feature">Training your team</li>
+          <li class="plan-feature">30 days of support</li>
+        </ul>
+        <a href="https://selar.com/66b6s44s6z" target="_blank" class="btn-plan">Get Business — $299</a>
+      </div>
+    </div>
+
+    <div class="guarantee-strip reveal">
+      <div class="guarantee-item">
+        <div class="guarantee-icon">🛡️</div>
+        <div class="guarantee-text"><strong>30-day money-back guarantee</strong>Not happy? Full refund, no questions asked.</div>
+      </div>
+      <div class="guarantee-item">
+        <div class="guarantee-icon">🔒</div>
+        <div class="guarantee-text"><strong>Secure payments</strong>Powered by Selar.</div>
+      </div>
+      <div class="guarantee-item">
+        <div class="guarantee-icon">⚡</div>
+        <div class="guarantee-text"><strong>Setup in 60 seconds</strong>No technical skills needed.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials-section">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-tag">Testimonials</div>
+      <h2 class="section-title">Loved by <em>small businesses</em></h2>
+    </div>
+    <div class="testimonials-grid reveal">
+      <div class="testimonial">
+        <div class="stars">★★★★★</div>
+        <div class="testimonial-text">"I used to spend my mornings drowning in emails. Now ReplyMate handles it all before I even wake up."</div>
+        <div class="testimonial-author">
+          <div class="author-avatar">JM</div>
+          <div>
+            <div class="author-name">James M.</div>
+            <div class="author-role">Freelance consultant</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial">
+        <div class="stars">★★★★★</div>
+        <div class="testimonial-text">"My clients think I got faster. It's embarrassing how good the replies are — honestly better than mine."</div>
+        <div class="testimonial-author">
+          <div class="author-avatar">SA</div>
+          <div>
+            <div class="author-name">Sarah A.</div>
+            <div class="author-role">Real estate agent</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial">
+        <div class="stars">★★★★★</div>
+        <div class="testimonial-text">"Worth every penny. I was losing clients because of slow replies. That problem is completely gone now."</div>
+        <div class="testimonial-author">
+          <div class="author-avatar">DK</div>
+          <div>
+            <div class="author-name">David K.</div>
+            <div class="author-role">Marketing agency owner</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AFFILIATE -->
+<section class="affiliate-section" id="affiliate">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-tag">Earn with us</div>
+      <h2 class="section-title">Make money <em>referring ReplyMate</em></h2>
+      <p class="section-sub">Share your link. Earn 30% commission on every paying customer you refer — forever.</p>
+    </div>
+    <div class="affiliate-card reveal">
+      <div class="affiliate-steps">
+        <div class="affiliate-step">
+          <div class="affiliate-num">1</div>
+          <div class="affiliate-step-text"><strong>Sign up for free</strong>Get your unique referral link in under 2 minutes.</div>
+        </div>
+        <div class="affiliate-step">
+          <div class="affiliate-num">2</div>
+          <div class="affiliate-step-text"><strong>Share it anywhere</strong>WhatsApp, Twitter, LinkedIn, your blog, YouTube — wherever your audience is.</div>
+        </div>
+        <div class="affiliate-step">
+          <div class="affiliate-num">3</div>
+          <div class="affiliate-step-text"><strong>Get paid every month</strong>Earn 30% of every payment your referrals make, for as long as they stay subscribed.</div>
+        </div>
+      </div>
+      <div class="affiliate-cta-box">
+        <div class="affiliate-pct">30%</div>
+        <div class="affiliate-pct-sub">commission per referral, every month</div>
+        <a href="mailto:hello@replymate.io?subject=Affiliate Program" class="btn-affiliate">Become an affiliate</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section" id="faq">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-tag">FAQ</div>
+      <h2 class="section-title">Questions answered</h2>
+    </div>
+    <div class="faq-list reveal">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Will it sound like me?
+          <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="faq-a">Yes. You tell ReplyMate exactly how you write — your tone, phrases you use, your sign-off style, your availability. It follows your instructions on every single reply.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Is my email data safe?
+          <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="faq-a">ReplyMate only reads emails to generate replies and never stores your email content. Your Gmail access is secured through Google's own OAuth system — the industry standard.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can I see replies before they're sent?
+          <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="faq-a">Absolutely — and it's the default. You see every suggested reply and decide whether to send, edit, or discard it. Auto-send is optional and you can turn it on or off any time.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Do I need any technical skills?
+          <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="faq-a">None at all. If you can sign into Gmail and fill out a short form, you can use ReplyMate. The whole setup takes about 10 minutes from start to finish.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          What if I want to cancel?
+          <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="faq-a">Cancel any time — no penalties, no questions. For the Pro monthly plan, you simply stop being charged at the end of your current billing period.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<!-- EMAIL CAPTURE -->
+<section class="capture-section" id="waitlist">
+  <h2>Not ready yet? <em>Stay in the loop.</em></h2>
+  <p>Join the waitlist and get 20% off when you're ready to start.</p>
+  <div class="capture-form">
+    <input type="email" class="capture-input" id="capture-email" placeholder="Your email address">
+    <button class="capture-btn" onclick="captureEmail()">Join waitlist</button>
+  </div>
+  <div class="capture-success" id="capture-success">🎉 You're on the list! We'll be in touch.</div>
+  <p class="capture-note">No spam. Unsubscribe any time.</p>
+</section>
+
+<section class="cta-section">
+  <h2>Ready to reclaim<br><em>your time?</em></h2>
+  <p>Join hundreds of small businesses who let AI handle their inbox.</p>
+  <a href="#pricing" class="cta-btn">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Get started free today
+  </a>
+  <p class="cta-note">No credit card required &nbsp;·&nbsp; Setup in 60 seconds</p>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <a href="#" class="footer-logo">
+    <div class="footer-logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    </div>
+    <span class="footer-logo-text">ReplyMate</span>
+  </a>
+  <p class="footer-copy">© 2026 ReplyMate &nbsp;·&nbsp; Built with Claude AI &nbsp;·&nbsp; All rights reserved</p>
+</footer>
+
+<script>
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+});
+
+function toggleFaq(btn) {
+  const item = btn.parentElement;
+  const wasOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+  if (!wasOpen) item.classList.add('open');
+}
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── REPLYMATE APP ──
+let rmToneSelected = 'Professional';
+let rmHistory = [];
+let rmCount = 0;
+let rmToday = 0;
+
+function rmTab(tab, btn) {
+  document.querySelectorAll('.rm-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['compose','history','settings'].forEach(p => {
+    const el = document.getElementById('rm-' + p);
+    if (el) el.style.display = p === tab ? 'block' : 'none';
+  });
+  if (tab === 'history') rmUpdateHistory();
+}
+
+function rmTone(el, tone) {
+  document.querySelectorAll('.rm-tone').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  rmToneSelected = tone;
+}
+
+function rmSaveSettings() {
+  const n = document.getElementById('rm-default-name').value.trim();
+  if (n) document.getElementById('rm-name').value = n;
+  rmShowToast('Settings saved!');
+}
+
+function rmShowToast(msg) {
+  let t = document.getElementById('rm-toast');
+  if (!t) { t = document.createElement('div'); t.id = 'rm-toast'; t.className = 'rm-toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 2200);
+}
+
+// Cloudflare Worker URL — replace with your real one after deploying
+const RM_WORKER_URL = 'https://replymateworker.chisomcaleb04.workers.dev';
+
+async function rmGenerate() {
+  const email = document.getElementById('rm-email').value.trim();
+  if (!email) { rmShowToast('Please paste an email first'); return; }
+  const ctx = document.getElementById('rm-context').value.trim();
+  const name = document.getElementById('rm-name').value.trim() || 'the team';
+  const bizName = document.getElementById('rm-biz-name') ? document.getElementById('rm-biz-name').value.trim() : '';
+  const bizCtx = document.getElementById('rm-biz-ctx') ? document.getElementById('rm-biz-ctx').value.trim() : '';
+  const btn = document.getElementById('rm-gen-btn');
+  btn.disabled = true; btn.textContent = 'Generating...';
+  const area = document.getElementById('rm-reply-area');
+  area.innerHTML = '<div class="rm-reply-box"><div class="rm-reply-lbl">AI Reply</div><div class="rm-typing"><div class="rm-dot"></div><div class="rm-dot"></div><div class="rm-dot"></div></div></div>';
+  const sys = 'You are ReplyMate, an AI email assistant for small businesses. Write professional, natural replies on behalf of the business owner.\n' + (bizName ? 'Business: ' + bizName + '\n' : '') + (bizCtx ? 'Context: ' + bizCtx + '\n' : '') + 'Tone: ' + rmToneSelected + '. Sign off with: ' + name + '. Sound human, not robotic. Be helpful and concise. Return only the email reply, no commentary.';
+  const usr = 'Email received:\n' + email + (ctx ? '\n\nKey points:\n' + ctx : '') + '\n\nWrite a reply.';
+  try {
+    const res = await fetch(RM_WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: sys, messages: [{ role: 'user', content: usr }] })
+    });
+    const data = await res.json();
+    const reply = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : 'Could not generate reply. Please try again.';
+    area.innerHTML = '<div class="rm-reply-box"><div class="rm-reply-lbl">AI Reply &mdash; ' + rmToneSelected + '</div><div class="rm-reply-text" id="rm-reply-text">' + reply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div><div class="rm-reply-actions"><button onclick="rmCopy()">Copy</button><button onclick="rmGenerate()">Regenerate</button><button onclick="rmShorter()">Make Shorter</button></div></div>';
+    rmCount++; rmToday++;
+    rmHistory.unshift({ email: email.slice(0,80), reply: reply, tone: rmToneSelected, time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) });
+    if (rmHistory.length > 20) rmHistory.pop();
+    saveReplyToSupabase(email, reply, rmToneSelected);
+  } catch(e) {
+    area.innerHTML = '<div class="rm-reply-box"><div class="rm-reply-text" style="color:#c00">Error generating reply. Please try again.</div></div>';
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Generate Reply';
+}
+
+function rmCopy() {
+  const t = document.getElementById('rm-reply-text') ? document.getElementById('rm-reply-text').innerText : '';
+  if (!t) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(t).then(() => rmShowToast('Copied!')).catch(() => { rmFallbackCopy(t); });
+  } else { rmFallbackCopy(t); }
+}
+
+function rmFallbackCopy(t) {
+  const el = document.createElement('textarea'); el.value = t;
+  document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+  rmShowToast('Copied!');
+}
+
+async function rmShorter() {
+  const t = document.getElementById('rm-reply-text') ? document.getElementById('rm-reply-text').innerText : '';
+  if (!t) return;
+  const btn = document.getElementById('rm-gen-btn'); btn.disabled = true; btn.textContent = 'Working...';
+  const box = document.querySelector('#rm-reply-area .rm-reply-box');
+  if (box) box.innerHTML = '<div class="rm-reply-lbl">Shortening...</div><div class="rm-typing"><div class="rm-dot"></div><div class="rm-dot"></div><div class="rm-dot"></div></div>';
+  try {
+    const res = await fetch(RM_WORKER_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 600, messages: [{ role: 'user', content: 'Make this email reply shorter and more concise. Same tone. Return only the email:\n\n' + t }] })
+    });
+    const d = await res.json();
+    const short = (d.content && d.content[0] && d.content[0].text) ? d.content[0].text : t;
+    document.getElementById('rm-reply-area').innerHTML = '<div class="rm-reply-box"><div class="rm-reply-lbl">Shortened Reply</div><div class="rm-reply-text" id="rm-reply-text">' + short.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div><div class="rm-reply-actions"><button onclick="rmCopy()">Copy</button><button onclick="rmGenerate()">Regenerate</button></div></div>';
+  } catch(e) {}
+  btn.disabled = false; btn.textContent = 'Generate Reply';
+}
+
+function rmUpdateHistory() {
+  if (document.getElementById('rm-m-total')) document.getElementById('rm-m-total').textContent = rmCount;
+  if (document.getElementById('rm-m-today')) document.getElementById('rm-m-today').textContent = rmToday;
+  if (document.getElementById('rm-m-saved')) document.getElementById('rm-m-saved').textContent = Math.round(rmCount * 7) + ' min';
+  const list = document.getElementById('rm-history-list');
+  if (!list) return;
+  if (!rmHistory.length) { list.innerHTML = '<div class="rm-empty">No replies yet. Generate your first one!</div>'; return; }
+  list.innerHTML = rmHistory.map(function(h, i) {
+    return '<div class="rm-history-item" onclick="rmLoadHistory(' + i + ')"><div class="rm-history-from">' + h.email.slice(0,55) + '...</div><div class="rm-history-preview">' + h.tone + ' &middot; ' + h.time + '</div></div>';
+  }).join('');
+}
+
+function rmLoadHistory(i) {
+  const h = rmHistory[i];
+  rmTab('compose', document.querySelectorAll('.rm-tab')[0]);
+  document.getElementById('rm-email').value = h.email;
+  document.getElementById('rm-reply-area').innerHTML = '<div class="rm-reply-box"><div class="rm-reply-lbl">From history &mdash; ' + h.tone + '</div><div class="rm-reply-text" id="rm-reply-text">' + h.reply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div><div class="rm-reply-actions"><button onclick="rmCopy()">Copy</button><button onclick="rmGenerate()">Regenerate</button></div></div>';
+}
+
+// ── WAITLIST CAPTURE ──
+async function captureEmail() {
+  const input = document.getElementById('capture-email');
+  const email = input.value.trim();
+  if (!email || !email.includes('@')) { rmShowToast('Please enter a valid email'); return; }
+  await saveEmailToSupabase(email);
+  document.querySelector('.capture-form').style.display = 'none';
+  document.getElementById('capture-success').style.display = 'block';
+}
+
+// ── EXIT POPUP ──
+let exitShown = false;
+document.addEventListener('mouseleave', (e) => {
+  if (e.clientY < 10 && !exitShown) {
+    exitShown = true;
+    document.getElementById('exit-popup').classList.add('show');
+  }
+});
+function closeExitPopup() {
+  document.getElementById('exit-popup').classList.remove('show');
+}
+async function submitExit() {
+  const email = document.getElementById('exit-email').value.trim();
+  if (!email || !email.includes('@')) { rmShowToast('Please enter a valid email'); return; }
+  await saveEmailToSupabase(email);
+  document.getElementById('exit-form').style.display = 'none';
+  document.getElementById('exit-success').style.display = 'block';
+  setTimeout(closeExitPopup, 2500);
+}
+
+// ── CHAT WIDGET ──
+function toggleChat() {
+  document.getElementById('chat-bubble').classList.toggle('open');
+}
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  if (!input.value.trim()) return;
+  input.value = '';
+  rmShowToast('Message sent! We\'ll reply to your email shortly.');
+  document.getElementById('chat-bubble').classList.remove('open');
+}
+
+</script>
+
+<!-- EXIT POPUP -->
+<div class="exit-popup-overlay" id="exit-popup">
+  <div class="exit-popup">
+    <button class="exit-popup-close" onclick="closeExitPopup()">×</button>
+    <h3>Wait — try one <em>free reply</em></h3>
+    <p>Before you go, drop your email and we'll send you a free AI-written reply for one of your emails. No card needed.</p>
+    <div class="exit-popup-form" id="exit-form">
+      <input type="email" class="exit-popup-input" id="exit-email" placeholder="Your email address">
+      <button class="exit-popup-btn" onclick="submitExit()">Send me a free reply</button>
+      <span class="exit-popup-skip" onclick="closeExitPopup()">No thanks, I'll handle emails myself</span>
+    </div>
+    <div class="exit-popup-success" id="exit-success">🎉 Done! Check your inbox in the next few hours.</div>
+  </div>
+</div>
+
+<!-- LIVE CHAT WIDGET -->
+<div class="chat-widget">
+  <div class="chat-bubble" id="chat-bubble">
+    <div class="chat-bubble-title">👋 Hi! Got a question?</div>
+    <div class="chat-bubble-sub">Ask us anything about ReplyMate.</div>
+    <input type="text" class="chat-bubble-input" id="chat-input" placeholder="Type your message...">
+    <button class="chat-bubble-send" onclick="sendChat()">Send message →</button>
+  </div>
+  <button class="chat-btn" onclick="toggleChat()" aria-label="Open chat">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  </button>
+</div>
+
+<!-- PRIVACY POLICY MODAL (inline) -->
+<div class="exit-popup-overlay" id="privacy-modal">
+  <div class="exit-popup" style="text-align:left;max-width:520px">
+    <button class="exit-popup-close" onclick="document.getElementById('privacy-modal').classList.remove('show')">×</button>
+    <h3 style="font-size:20px;margin-bottom:1rem">Privacy Policy</h3>
+    <div style="font-size:13px;color:var(--gray);line-height:1.7;max-height:360px;overflow-y:auto">
+      <p style="margin-bottom:0.75rem"><strong style="color:var(--ink)">What we collect:</strong> We collect your email address when you sign up or join the waitlist. If you connect Gmail, we request read/send access only to generate replies.</p>
+      <p style="margin-bottom:0.75rem"><strong style="color:var(--ink)">How we use it:</strong> Your email is used to deliver the service and send product updates. We never sell your data to third parties.</p>
+      <p style="margin-bottom:0.75rem"><strong style="color:var(--ink)">Email content:</strong> ReplyMate reads emails only to generate replies. Email content is processed in real-time and never stored on our servers.</p>
+      <p style="margin-bottom:0.75rem"><strong style="color:var(--ink)">Payments:</strong> Payments are handled by Selar. We never store card details.</p>
+      <p style="margin-bottom:0.75rem"><strong style="color:var(--ink)">Your rights:</strong> You can request deletion of your data at any time by emailing hello@replymate.io.</p>
+      <p><strong style="color:var(--ink)">Contact:</strong> hello@replymate.io</p>
+    </div>
+  </div>
+</div>
+
+</body>
+  </html>
