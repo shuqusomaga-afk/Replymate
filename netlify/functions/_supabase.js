@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.REPLYMATE_DB_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
+console.log('DEBUG key length:', supabaseServiceKey ? supabaseServiceKey.length : 'MISSING');
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Missing Supabase environment variables (REPLYMATE_DB_URL or SUPABASE_SERVICE_ROLE_KEY)');
 }
