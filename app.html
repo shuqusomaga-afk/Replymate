@@ -182,7 +182,8 @@ async function fetchEmails() {
   document.getElementById('emailList').innerHTML = `<div class="empty"><div class="spinner" style="width:24px;height:24px;border-width:3px;margin:0 auto 12px"></div><p>Loading your inbox…</p></div>`;
   try {
     const res = await fetch('/api/emails');
-    emails = await res.json();
+    const data = await res.json();
+    emails = data.emails || [];
     if (emails.error) throw new Error(emails.error);
     renderEmails();
     setStatus(`${emails.length} unread email${emails.length !== 1 ? 's' : ''}`, emails.length ? 'active' : '');
