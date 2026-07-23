@@ -15,6 +15,19 @@ exports.handler = async (event) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'Not authenticated' }),
     };
+  }// Paywall check — block free users from generating replies
+  const { data: userRow, error: userErr } = await supabase
+    .from('users')
+    .select('plan_status')
+    .eq('id', session.userId)
+    .single();
+
+  if (userErr || !userRow || userRow.plan_status !== 'paid') {
+    return {
+      statusCode: 402,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Upgrade required', upgradeRequired: true }),
+    };
   }
 
   let payload;
