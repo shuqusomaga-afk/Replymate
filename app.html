@@ -232,8 +232,12 @@ async function generateReply(i) {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ from: e.from, subject: e.subject, preview: e.preview, agentName: settings.agentName, toneInstructions: settings.toneInstructions })
-    });
-    const data = await res.json();
+    });const data = await res.json();
+    if (res.status === 402 || data.upgradeRequired) {
+      rd.innerHTML = `<div class="reply-box"><div class="reply-label" style="color:#A32D2D">Upgrade required to generate replies</div><div style="margin-top:8px;font-size:14px">Choose a plan to unlock AI replies:<br><a href="https://selar.com/7578vg2ayw" target="_blank">Starter — $49/mo</a><br><a href="https://selar.com/3199126180" target="_blank">Pro — $99/mo</a><br><a href="https://selar.com/66b6s44s6z" target="_blank">Business — $299/mo</a></div></div>`;
+      btn.disabled = false;
+      return;
+    }
     if (data.error) throw new Error(data.error);
     emails[i].replyText = data.reply;
     showReply(i);
