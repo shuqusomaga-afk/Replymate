@@ -167,9 +167,7 @@ function saveSettings() {
   settings.toneInstructions = document.getElementById('toneInstructions').value.trim() || settings.toneInstructions;
   settings.autoSend = document.getElementById('autoSend').checked;
   localStorage.setItem('rm_settings', JSON.stringify(settings));
-  const msg = document.getElementById('saveMsg');
-  msg.style.display = 'block';
-  setTimeout(() => msg.style.display = 'none', 2000);
+  toggleSettings();
 }
 
 function setStatus(text, state) {
