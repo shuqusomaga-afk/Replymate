@@ -51,10 +51,9 @@ exports.handler = async (event) => {
     return {
       statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'preview is required' }),
+      body: JSON.stringify({ error: 'preview is required', receivedPayload: payload }),
     };
-  }
-
+  } 
   const selectedTone = toneInstructions || 'professional';
 
   // Build a single combined email string for the Worker's emailContent field
