@@ -15,7 +15,9 @@ exports.handler = async (event) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'Not authenticated' }),
     };
-  }// Paywall check — block free users from generating replies
+  }
+
+  // Paywall check — block free users from generating replies
   const { data: userRow, error: userErr } = await supabase
     .from('users')
     .select('plan_status')
@@ -53,17 +55,12 @@ exports.handler = async (event) => {
 
   const selectedTone = tone || 'professional';
 
-  const prompt = `You are drafting a reply to the following email on behalf of the recipient.
-
-From: ${from || 'unknown sender'}
+  // Build a single combined email string — the Worker expects one
+  // emailContent field, not separate from/subject/body fields.
+  const emailContent = `From: ${from || 'unknown sender'}
 Subject: ${subject || '(no subject)'}
 
-Email content:
-"""
-${emailBody}
-"""
-
-Write a ${selectedTone} reply to this email. Keep it concise and natural — write only the reply body text, no subject line, no "Dear X" placeholder instructions, just the reply itself ready to send.`;
+${emailBody}`;
 
   try {
     const workerUrl = process.env.CLOUDFLARE_WORKER_URL;
@@ -76,22 +73,18 @@ Write a ${selectedTone} reply to this email. Keep it concise and natural — wri
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }],
+        emailContent: emailContent,
+        tone: selectedTone,
       }),
     });
 
     if (!aiRes.ok) {
-      throw new Error(`AI worker request failed: ${await aiRes.text()}`);
+      const errBody = await aiRes.text();
+      throw new Error(`AI worker request failed (${aiRes.status}): ${errBody}`);
     }
 
     const aiData = await aiRes.json();
-    const replyText = aiData.content
-      ?.filter((block) => block.type === 'text')
-      .map((block) => block.text)
-      .join('\n')
-      .trim();
+    const replyText = aiData.reply?.trim();
 
     if (!replyText) {
       throw new Error('AI response contained no text content');
@@ -108,14 +101,16 @@ Write a ${selectedTone} reply to this email. Keep it concise and natural — wri
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reply: replyText }),
+      body: JSON.stringify({ reply: replyText, modelUsed: aiData.modelUsed, provider: aiData.provider }),
     };
   } catch (err) {
     console.error('api-generate-reply error:', err);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Failed to generate reply' }),
+      // Include the real error message so it's visible in Netlify logs
+      // and can be surfaced in the UI if needed for debugging.
+      body: JSON.stringify({ error: 'Failed to generate reply', details: err.message }),
     };
   }
 };
