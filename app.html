@@ -245,7 +245,7 @@ async function generateReply(i) {
     showReply(i);
     if (settings.autoSend) setTimeout(() => sendReply(i), 600);
   } catch(err) {
-    rd.innerHTML = `<div class="reply-box"><div class="reply-label" style="color:#A32D2D">Failed to generate reply</div></div>`;
+    rd.innerHTML = `<div class="reply-box"><div class="reply-label" style="color:#A32D2D">Failed to generate reply: ${err.message}</div></div>`;
     btn.disabled = false;
   }
 }
