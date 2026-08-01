@@ -43,24 +43,25 @@ exports.handler = async (event) => {
     };
   }
 
-  const { emailBody, subject, from, tone } = payload;
+  // These are the ACTUAL field names the frontend (app.html) sends —
+  // not emailBody/tone like earlier versions of this file assumed.
+  const { from, subject, preview, agentName, toneInstructions } = payload;
 
-  if (!emailBody) {
+  if (!preview) {
     return {
       statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'emailBody is required' }),
+      body: JSON.stringify({ error: 'preview is required' }),
     };
   }
 
-  const selectedTone = tone || 'professional';
+  const selectedTone = toneInstructions || 'professional';
 
-  // Build a single combined email string — the Worker expects one
-  // emailContent field, not separate from/subject/body fields.
+  // Build a single combined email string for the Worker's emailContent field
   const emailContent = `From: ${from || 'unknown sender'}
 Subject: ${subject || '(no subject)'}
 
-${emailBody}`;
+${preview}`;
 
   try {
     const workerUrl = process.env.CLOUDFLARE_WORKER_URL;
@@ -93,7 +94,7 @@ ${emailBody}`;
     // Log this generation to email_replies for history
     await supabase.from('email_replies').insert({
       user_id: session.userId,
-      original_email: emailBody,
+      original_email: preview,
       generated_reply: replyText,
       status: 'drafted',
     });
@@ -108,8 +109,6 @@ ${emailBody}`;
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
-      // Include the real error message so it's visible in Netlify logs
-      // and can be surfaced in the UI if needed for debugging.
       body: JSON.stringify({ error: 'Failed to generate reply', details: err.message }),
     };
   }
