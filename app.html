@@ -240,7 +240,7 @@ async function generateReply(i) {
       btn.disabled = false;
       return;
     }
-    if (data.error) throw new Error(data.error);
+    if (data.error) throw new Error(data.error + ' | received: ' + JSON.stringify(data.receivedPayload);
     emails[i].replyText = data.reply;
     showReply(i);
     if (settings.autoSend) setTimeout(() => sendReply(i), 600);
