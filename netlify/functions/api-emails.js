@@ -6,20 +6,36 @@ const { listMessages, getMessage } = require('./_gmail');
 function extractBody(payload) {
   if (!payload) return '';
 
-  if (payload.body?.data) {
-    return Buffer.from(payload.body.data, 'base64').toString('utf8');
+  let plainText = '';
+  let htmlText = '';
+
+  function walk(part) {
+    if (!part) return;
+    if (part.mimeType === 'text/plain' && part.body?.data) {
+      plainText = plainText || Buffer.from(part.body.data, 'base64').toString('utf8');
+    } else if (part.mimeType === 'text/html' && part.body?.data) {
+      htmlText = htmlText || Buffer.from(part.body.data, 'base64').toString('utf8');
+    } else if (part.parts) {
+      part.parts.forEach(walk);
+    } else if (part.body?.data && !part.mimeType) {
+      plainText = plainText || Buffer.from(part.body.data, 'base64').toString('utf8');
+    }
   }
 
-  if (payload.parts) {
-    const textPart = payload.parts.find((p) => p.mimeType === 'text/plain');
-    if (textPart?.body?.data) {
-      return Buffer.from(textPart.body.data, 'base64').toString('utf8');
-    }
-    // Fall back to recursing into nested parts (e.g. multipart/alternative)
-    for (const part of payload.parts) {
-      const nested = extractBody(part);
-      if (nested) return nested;
-    }
+  walk(payload);
+
+  if (plainText) return plainText.slice(0, 5000);
+
+  if (htmlText) {
+    const stripped = htmlText
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return stripped.slice(0, 5000);
   }
 
   return '';
