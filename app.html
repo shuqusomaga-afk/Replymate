@@ -272,7 +272,7 @@ async function sendReply(i) {
     const res = await fetch('/api/send-reply', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ threadId: e.threadId, to: e.email, subject: e.subject, replyBody: e.replyText })
+      body: JSON.stringify({ threadId: e.threadId, to: e.from, subject: e.subject, replyBody: e.replyText })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
