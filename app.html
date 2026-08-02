@@ -280,7 +280,7 @@ async function sendReply(i) {
     document.getElementById(`badge-${i}`).textContent = 'Replied';
     rd.innerHTML = `<div class="reply-box"><div class="reply-label" style="color:#1D9E75">✓ Reply sent successfully</div></div>`;
   } catch(err) {
-    rd.innerHTML = `<div class="reply-box"><div class="reply-label" style="color:#A32D2D">Failed to send. Try again.</div></div>`;
+  rd.innerHTML = `<div class="reply-box"><div class="reply-label" style="color:#A32D2D">Failed to send: ${err.message}</div></div>`;
     showReply(i);
   }
 }
